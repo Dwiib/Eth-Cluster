@@ -1,0 +1,14 @@
+---
+# tasks file for netplan_static_ip
+- block:
+  - name: Deploy netplan config template
+    template:
+      src: 50-static.yaml.j2
+      dest: "{{ (netplan.configDirectory, netplan.fileName) | path_join }}"
+    register: netplanconfig
+  - name: Apply netplan config
+    command: netplan apply
+    when: netplanconfig.changed or netplanForceReload
+  become: yes
+  become_user: root
+    

@@ -1,0 +1,9 @@
+---
+# vars file for netplan_static_ip
+devicename: eno2
+address: 192.168.1.1/24
+gateway4: 192.168.1.0
+netplan:
+  configDirectory: /etc/netplan
+  fileName: 60-static.yaml
+netplanForceReload: false

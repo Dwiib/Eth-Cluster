@@ -1,0 +1,10 @@
+---
+- hosts: all
+  vars_files:
+    - ./vars/all_vars.yml
+  user: ovh
+  roles:
+    - role: netplan_static_ip
+      devicename: "{{networking.device}}"
+      address: "{{networking.address}}"
+      gateway4: "{{networking.gateway}}"
