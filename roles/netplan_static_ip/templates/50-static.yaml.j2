@@ -6,4 +6,6 @@ network:
       dhcp4: no
       addresses:
         - "{{ address }}"
+{% if gateway4 %}
       gateway4: "{{  gateway4  }}"
+{% endif %}
