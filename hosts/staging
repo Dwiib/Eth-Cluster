@@ -1,13 +1,15 @@
 # Add each host to the [staging] group and to a "type" group such as [web] or [db].
 # List each machine only once per [group], even if it will host multiple sites.
 
-[staging]
+[control]
+ns562795.ip-54-39-129.net
 
-ns3018735.ip-149-202-82.eu
-ns3018801.ip-149-202-82.eu
-ns3067413.ip-79-137-66.eu
+[staging]
+ns562795.ip-54-39-129.net
+ns563327.ip-54-39-129.net
+ns567140.ip-51-79-98.net
 
 [provision]
-ns3018735.ip-149-202-82.eu
-ns3018801.ip-149-202-82.eu
-ns3067413.ip-79-137-66.eu
+ns562795.ip-54-39-129.net
+ns563327.ip-54-39-129.net
+ns567140.ip-51-79-98.net

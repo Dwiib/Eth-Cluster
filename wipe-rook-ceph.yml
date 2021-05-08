@@ -1,0 +1,16 @@
+---
+- hosts: all
+  vars_files:
+    - ./vars/all_vars.yml
+  user: ovh
+  become: yes
+  become_user: root
+  tasks:
+    - name: Delete rook-ceph directory
+      file:
+        path: /var/lib/rook
+        state: absent 
+    - shell: vgremove -y /dev/ceph* 
+      failed_when: false
+    - command: wipefs -a /dev/nvme1n1
+    - command: wipefs -a /dev/nvme2n1

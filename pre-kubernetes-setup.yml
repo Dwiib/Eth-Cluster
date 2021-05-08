@@ -3,7 +3,12 @@
   vars_files:
     - ./vars/all_vars.yml
   user: ovh
+  become: yes
+  become_user: root
   roles:
     - role: netplan_static_ip
       devicename: "{{networking.device}}"
       address: "{{networking.address}}"
+  tasks:
+    - ansible.builtin.command: apt update
+      changed_when: False
