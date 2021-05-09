@@ -1,0 +1,11 @@
+---
+- hosts: control
+  vars_files:
+    - ./vars/all_vars.yml
+  user: ovh
+  become: yes
+  become_user: root
+  tasks:
+    - file:
+        path: /var/lib/helm/charts
+        state: directory
