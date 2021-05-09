@@ -1,0 +1,129 @@
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: geth-volumeclaim
+spec:
+  storageClassName: rook-ceph-block
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1000Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: geth
+  labels:
+    app: geth
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: geth
+  strategy:
+    type: Recreate # We don't want multiple geths running simultaneously
+  template:
+    metadata:
+      labels:
+        app: geth
+    spec:
+      containers:
+        - name: geth
+          image: ethereum/client-go:v1.9.21
+          ports:
+            - containerPort: 30303
+              name: p2p
+            - containerPort: 8545
+              name: http-rpc
+            - containerPort: 8546
+              name: ws-rpc
+          volumeMounts:
+            - name: geth-persistent-storage
+              mountPath: /opt/geth
+          args:
+          - "--cache=8192"
+          - "--rpc"
+          - "--rpcaddr=0.0.0.0"
+          - "--rpccorsdomain=*"
+          - "--rpcvhosts=*"
+          - "--rpcapi=eth,net,web3,txpool,debug"
+          - "--ws"
+          - "--wsaddr=0.0.0.0"
+          - "--wsorigins=*"
+          - "--wsapi=eth,net,web3,txpool,debug"
+          - "--datadir=/opt/geth"
+#          - "--nat=extip:%(cluster_ip)s"
+#          readinessProbe:
+#            exec:
+#              command:
+#              - /bin/sh
+#              - -c
+#              - geth --cache=4096 --exec "eth.syncing === false" attach http://localhost:8545/ | grep true
+#            initialDelaySeconds: 10
+#            periodSeconds: 10
+#          livenessProbe:
+#            exec:
+#              command:
+#              - /bin/sh
+#              - -c
+#              - geth --cache=4096 --exec "eth.syncing !== false || (Date.now() / 1000 - eth.getBlock('latest').timestamp) < 300" attach http://localhost:8545/ | grep true
+#            initialDelaySeconds: 30
+#            periodSeconds: 30
+          resources:
+            requests:
+              memory: "10Gi"
+              cpu: "1"
+        # - name: metrics
+        #   image: ensdomains/geth-metrics
+        #   imagePullPolicy: Always
+        #   env:
+        #      - name: WEB3_PROVIDER_URI
+        #        value: http://localhost:8545/
+        #      - name: POD_UID # using Downwards API to get POD UID
+        #        valueFrom:
+        #          fieldRef:
+        #            fieldPath: metadata.uid
+        #      - name: CONTAINER_NAME
+        #        value: geth-metrics  # has to be the same as the containes[0].name above
+        #      - name: CLUSTER_NAME # this cannot be determined from metadata. best workaround is to store it in our own ConfigMap
+        #        valueFrom:
+        #            configMapKeyRef:
+        #                name: cluster-metadata # you have to create this ConfigMap yourself for this to work (see clustermetadata.yaml)
+        #                key: name
+      volumes:
+        - name: geth-persistent-storage
+          persistentVolumeClaim:
+            claimName: geth-volumeclaim
+# ---
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: geth
+#   labels:
+#     app: geth
+# spec:
+#   ports:
+#   - port: 8545
+#     protocol: TCP
+#     name: http-api
+#   - port: 8546
+#     protocol: TCP
+#     name: ws-api
+#   selector:
+#     app: geth
+# ---
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: geth-p2p
+#   labels:
+#     app: geth
+# spec:
+#   ports:
+#   - port: 30303
+#     protocol: TCP
+#   selector:
+#     app: geth
+#   type: LoadBalancer
+#   loadBalancerIP: 
