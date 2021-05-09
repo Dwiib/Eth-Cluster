@@ -6,6 +6,21 @@
   become: yes
   become_user: root
   tasks:
-    - file:
+    - name: Ensure local helm directory exists
+      file:
         path: /var/lib/helm/charts
         state: directory
+    - name: deploy-local-helm-chart
+      loop:
+        - name: geth
+          directory: helm_charts/geth
+          release_namespace: ens-cluster
+      include_role: 
+        name: deploy-local-helm-chart
+      vars:
+        - chart: "{{ item }}"
+        - create_namespace: Yes
+        - state: present
+      # deploy-local-helm-chart:
+      #   name: "{{item.name}}"
+      #   directory: "{{item.directory}}"
