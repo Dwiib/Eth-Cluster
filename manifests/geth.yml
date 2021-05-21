@@ -1,0 +1,26 @@
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: geth
+  namespace: ens-bridge
+spec:
+  ports:
+    - name: geth
+      protocol: TCP
+      port: 80
+      targetPort: 8545
+---
+# Forward all geth traffic to my external node
+# Note - this is not needed in production as geth is running within the cluster
+kind: Endpoints
+apiVersion: v1
+metadata:
+  name: geth
+  namespace: ens-bridge
+subsets:
+  - addresses:
+      - ip: 192.168.1.7
+    ports:
+      - name: geth
+        port: 8545
