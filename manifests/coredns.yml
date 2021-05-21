@@ -1,0 +1,156 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: coredns
+  labels:
+    app: coredns
+  namespace: ens-bridge
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: coredns
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: coredns
+    spec:
+      containers:
+        - name: coredns
+          image: wealdtech/coredns-ens
+          securityContext:
+            runAsUser: 10001
+            runAsGroup: 10001
+            allowPrivilegeEscalation: false
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "500m"
+            limits:
+              memory: "256Mi"
+              cpu: "800m"
+          ports:
+            - containerPort: 53
+              name: dns-tcp
+              protocol: "TCP"
+            - containerPort: 53
+              name: dns-udp
+              protocol: "UDP"
+          args:
+            - "-conf"
+            - "/etc/coredns/Corefile"
+          env:
+            - name: GETH_NODE
+              value: "geth.ens-bridge.svc.cluster.local"
+            - name: IPFS_BACKEND
+              # We have to hardcode the ClusterIP here for the `ipfsgatewaya` setting
+              value: "10.244.10.11"
+          volumeMounts:
+            - name: corefile-volume
+              mountPath: /etc/coredns/Corefile
+              subPath: Corefile
+          livenessProbe:
+            tcpSocket:
+              port: 53
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 2
+            successThreshold: 1
+            failureThreshold: 3
+      volumes:
+      - name: corefile-volume
+        configMap:
+          name: corefile
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: corefile
+  namespace: ens-bridge
+data:
+  Corefile: |
+    # Default resolver
+    . {
+        forward . 1.1.1.1
+        log
+        errors
+    }
+
+    # Answer all .eth queries
+    eth {
+
+        rewrite stop {
+            name regex (.*)\.eth\.link {1}.eth
+            answer name (.*)\.eth {1}.eth.link
+        }
+
+        ens {
+            connection http://{$GETH_NODE}
+            ethlinknameservers 127.0.0.1
+            ipfsgatewaya {$IPFS_BACKEND}:80
+        }
+
+        log
+        errors
+        debug
+    }
+
+    # Capture eth.link queries from ipfs-go
+    eth.link {
+
+        rewrite stop {
+            name regex (.*)\.eth\.link {1}.eth
+            answer name (.*)\.eth {1}.eth.link
+        }
+
+        ens {
+            connection http://{$GETH_NODE}
+            ethlinknameservers 127.0.0.1
+            ipfsgatewaya {$IPFS_BACKEND}:80
+        }
+
+        log
+        errors
+        debug
+    }
+
+    # Unstoppable domains support
+    crypto {
+
+        ens {
+            connection http://{$GETH_NODE}
+            ethlinknameservers 127.0.0.1
+            ipfsgatewaya {$IPFS_BACKEND}:80
+        }
+
+        log
+        errors
+        debug
+    }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: coredns
+  namespace: ens-bridge
+spec:
+  selector:
+    app: coredns
+  # Need to hardcode the clusterIP for the dnsPolicy spec of the ipfs-go deployment
+  # Note - this can be disabled once we upgrade to v0.9.0 and customize the resolvers to use DNS over HTTPS
+  clusterIP: 10.96.10.10
+  ports:
+    - name: dns-tcp
+      protocol: TCP
+      targetPort: 53
+      port: 53
+    - name: dns-udp
+      protocol: UDP
+      targetPort: 53
+      port: 53
+    - name: dns-over-https
+      protocol: TCP
+      targetPort: 443
+      port: 443
