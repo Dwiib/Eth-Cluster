@@ -1,0 +1,194 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: coredns
+  labels:
+    app: coredns
+  namespace: ens-bridge
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: coredns
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: coredns
+    spec:
+      containers:
+        - name: coredns
+          image: wealdtech/coredns-ens
+          securityContext:
+            runAsUser: 10001
+            runAsGroup: 10001
+            allowPrivilegeEscalation: false
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "500m"
+            limits:
+              memory: "256Mi"
+              cpu: "800m"
+          ports:
+            - containerPort: 53
+              name: dns-tcp
+              protocol: TCP
+            - containerPort: 53
+              name: dns-udp
+              protocol: UDP
+            - containerPort: 443
+              name: https
+              protocol: TCP
+          args:
+            - "-conf"
+            - "/etc/coredns/Corefile"
+          env:
+            - name: GETH_NODE
+              value: "geth.ens-bridge.svc.cluster.local"
+            - name: IPFS_BACKEND
+              # We have to hardcode the ipfs-go svc ClusterIP here for the `ipfsgatewaya` setting
+              value: "10.244.10.11"
+          volumeMounts:
+            - name: corefile-volume
+              mountPath: /etc/coredns/Corefile
+              subPath: Corefile
+            - name: certificate-pair
+              mountPath: /etc/ssl/certs/ca.crt
+              subPath: ca.crt
+              readOnly: true
+            - name: certificate-pair
+              mountPath: /etc/ssl/certs/tls.crt
+              subPath: tls.crt
+              readOnly: true
+            - name: certificate-pair
+              mountPath: /etc/ssl/certs/tls.key
+              subPath: tls.key
+              readOnly: true
+          livenessProbe:
+            tcpSocket:
+              port: 53
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 2
+            successThreshold: 1
+            failureThreshold: 3
+      volumes:
+        - name: corefile-volume
+          configMap:
+            name: corefile
+        - name: certificate-pair
+          secret:
+            secretName: coredns-certificate
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: corefile
+  namespace: ens-bridge
+data:
+  Corefile: |
+    # Answer all .eth queries from ipfs-go
+    https://eth {
+
+        tls /etc/ssl/certs/tls.crt /etc/ssl/certs/tls.key /etc/ssl/certs/ca.crt
+
+        ens {
+            connection http://{$GETH_NODE}
+            ethlinknameservers 127.0.0.1
+            ipfsgatewaya {$IPFS_BACKEND}:80
+        }
+
+        log {
+            class all
+        }
+
+        errors
+        debug
+    }
+
+    # Unstoppable domains support for ipfs-go
+    https://crypto {
+
+        tls /etc/ssl/certs/tls.crt /etc/ssl/certs/tls.key /etc/ssl/certs/ca.crt
+
+        ens {
+            connection http://{$GETH_NODE}
+            ethlinknameservers 127.0.0.1
+            ipfsgatewaya {$IPFS_BACKEND}:80
+        }
+
+        log {
+            class all
+        }
+
+        errors
+        debug
+    }
+
+    # Capture eth.link queries from ipfs-go
+    eth.link {
+        rewrite stop {
+            name regex (.*)\.eth\.link {1}.eth
+            answer name (.*)\.eth {1}.eth.link
+        }
+        ens {
+            connection http://{$GETH_NODE}
+            ethlinknameservers 127.0.0.1
+            ipfsgatewaya {$IPFS_BACKEND}:80
+        }
+        log
+        errors
+        debug
+    }
+
+    # Answer all .eth queries
+    eth {
+        rewrite stop {
+            name regex (.*)\.eth\.link {1}.eth
+            answer name (.*)\.eth {1}.eth.link
+        }
+        ens {
+            connection http://{$GETH_NODE}
+            ethlinknameservers 127.0.0.1
+            ipfsgatewaya {$IPFS_BACKEND}:80
+        }
+        log
+        errors
+        debug
+    }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: coredns
+  namespace: ens-bridge
+spec:
+  selector:
+    app: coredns
+  ports:
+    - name: dns-tcp
+      protocol: TCP
+      targetPort: 53
+      port: 53
+    - name: dns-udp
+      protocol: UDP
+      targetPort: 53
+      port: 53
+    - name: https
+      protocol: TCP
+      targetPort: 443
+      port: 443
+---
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: coredns
+  namespace: ens-bridge
+spec:
+  secretName: coredns-certificate
+  dnsNames:
+    - "coredns.ens-bridge.svc.cluster.local"
+  issuerRef:
+    name: selfsigned-issuer

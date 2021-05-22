@@ -1,0 +1,93 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ipfs-go
+  labels:
+    app: ipfs-go
+  namespace: ens-bridge
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ipfs-go
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: ipfs-go
+    spec:
+      containers:
+        - name: ipfs-go
+          image: ipfs/go-ipfs:v0.9.0-rc1
+          securityContext:
+            runAsUser: 10001
+            runAsGroup: 10001
+            allowPrivilegeEscalation: false
+          command:
+            [
+              "/bin/sh",
+              "-c",
+              'ipfs init --profile=default-datastore; ipfs config --json DNS.Resolvers ''{"eth.": "https://coredns.ens-bridge.svc.cluster.local/dns-query", "crypto.": "https://coredns.ens-bridge.svc.cluster.local/dns-query"}'' && ipfs config Addresses.API /ip4/0.0.0.0/tcp/5001 && ipfs config Addresses.Gateway /ip4/0.0.0.0/tcp/8080 && ipfs config Addresses.Swarm --json ''["/ip4/0.0.0.0/tcp/4001", "/ip4/0.0.0.0/udp/4001/quic"]'' && ipfs daemon --migrate=true',
+            ]
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "500m"
+            limits:
+              memory: "256Mi"
+              cpu: "800m"
+          ports:
+            - containerPort: 8080
+              name: gateway
+            - containerPort: 4001
+              name: "swarm"
+              protocol: "TCP"
+            - containerPort: 5001
+              name: "api"
+              protocol: "TCP"
+          volumeMounts:
+            - name: ipfs-data
+              mountPath: /data/ipfs
+            - name: ca-certificate
+              mountPath: /etc/ssl/certs/ca.crt
+              subPath: ca.crt
+              readOnly: true
+          env:
+            - name: IPFS_PROFILE
+              value: "server"
+            - name: IPFS_LOGGING
+              value: "info"
+          #livenessProbe:
+          #  httpGet:
+          #    port: 8080
+          #    path: /version
+              #httpHeaders:
+              #  - name: Host
+              #    value: penguinparty.eth
+          #  initialDelaySeconds: 10
+          #  periodSeconds: 30
+          #  failureThreshold: 2
+          #  timeoutSeconds: 120
+      volumes:
+        - name: ipfs-data
+          emptyDir: {}
+        - name: ca-certificate
+          secret:
+            secretName: coredns-certificate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ipfs-go
+  namespace: ens-bridge
+spec:
+  # Hardcoded clusterIP for coredns `ipfsgatewaya` setting
+  clusterIP: 10.96.10.11
+  selector:
+    app: ipfs-go
+  ports:
+    - name: gateway
+      protocol: TCP
+      port: 80
+      targetPort: 8080
