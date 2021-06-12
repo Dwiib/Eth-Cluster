@@ -4,3 +4,5 @@
 
 replicaCount: 1
 syncmode: full
+geth:
+  image: "ethereum/client-go:v1.10.3"
