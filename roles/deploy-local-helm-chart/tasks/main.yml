@@ -1,0 +1,15 @@
+---
+- name: "Copy {{chart.name}} chart"
+  ansible.posix.synchronize:
+    src: "{{chart.directory}}"
+    dest: "/var/lib/helm/charts/"
+    delete: yes
+    recursive: yes
+- name: "Deploy {{chart.name}} chart from local path"
+  community.kubernetes.helm:
+    name: "{{chart.name}}"
+    chart_ref: "/var/lib/helm/charts/{{chart.name}}"
+    release_namespace: "{{chart.release_namespace}}"
+    create_namespace: "{{chart.create_namespace | default(create_namespace)}}"
+    purge: "{{purge}}"
+    state: "{{state}}"

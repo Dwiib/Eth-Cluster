@@ -1,0 +1,5 @@
+---
+# vars file for deploy-local-helm-chart
+create_namespace: No
+purge: No
+state: present

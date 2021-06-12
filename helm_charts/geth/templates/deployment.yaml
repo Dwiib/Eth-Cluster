@@ -53,6 +53,7 @@ spec:
           - "--wsorigins=*"
           - "--wsapi=eth,net,web3,txpool,debug"
           - "--datadir=/opt/geth"
+          - "--syncmode={{.Values.syncmode}}"
 #          - "--nat=extip:%(cluster_ip)s"
 #          readinessProbe:
 #            exec:

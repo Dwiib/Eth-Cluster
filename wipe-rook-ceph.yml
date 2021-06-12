@@ -12,5 +12,9 @@
         state: absent 
     - shell: vgremove -y /dev/ceph* 
       failed_when: false
-    - command: wipefs -a /dev/nvme1n1
-    - command: wipefs -a /dev/nvme2n1
+    - name: Deploy nvme-cli
+      package:
+        name: nvme-cli
+        state: present
+    - shell: wipefs -a /dev/nvme1n1 && nvme format -s1 /dev/nvme1n1
+    - shell: wipefs -a /dev/nvme2n1 && nvme format -s1 /dev/nvme2n1
