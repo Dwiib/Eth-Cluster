@@ -54,6 +54,7 @@ spec:
           - "--ws.api=eth,net,web3,txpool,debug"
           - "--datadir=/opt/geth"
           - "--syncmode={{.Values.syncmode}}"
+          - "--snapshot=false"
 #          - "--nat=extip:%(cluster_ip)s"
 #          readinessProbe:
 #            exec:
