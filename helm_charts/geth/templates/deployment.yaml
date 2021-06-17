@@ -30,7 +30,7 @@ spec:
     spec:
       containers:
         - name: geth
-          image: ethereum/client-go:v1.9.21
+          image: "{{.Values.geth.image}}"
           ports:
             - containerPort: 30303
               name: p2p
@@ -43,16 +43,18 @@ spec:
               mountPath: /opt/geth
           args:
           - "--cache=8192"
-          - "--rpc"
-          - "--rpcaddr=0.0.0.0"
-          - "--rpccorsdomain=*"
-          - "--rpcvhosts=*"
-          - "--rpcapi=eth,net,web3,txpool,debug"
+          - "--http"
+          - "--http.addr=0.0.0.0"
+          - "--http.corsdomain=*"
+          - "--http.vhosts=*"
+          - "--http.api=eth,net,web3,txpool,debug"
           - "--ws"
-          - "--wsaddr=0.0.0.0"
-          - "--wsorigins=*"
-          - "--wsapi=eth,net,web3,txpool,debug"
+          - "--ws.addr=0.0.0.0"
+          - "--ws.origins=*"
+          - "--ws.api=eth,net,web3,txpool,debug"
           - "--datadir=/opt/geth"
+          - "--syncmode={{.Values.syncmode}}"
+          - "--snapshot=false"
 #          - "--nat=extip:%(cluster_ip)s"
 #          readinessProbe:
 #            exec:

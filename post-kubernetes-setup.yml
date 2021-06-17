@@ -35,7 +35,19 @@
       pip:
         name:
           - openshift>=0.12.0,<0.13.0
-
+    - name: Add storage role to pods
+      k8s:
+        definition:
+          apiversion: v1
+          kind: Node
+          metadata:
+            name: "{{item}}"
+            labels:
+              node-role.kubernetes.io/storage-node: ""
+      with_items:
+        - main1
+        - main2
+        - main3
     # - name: Check if tiller is installed
     #   shell: kubectl get pods --namespace kube-system | grep -q tiller
     #   register: tillerInstalled
@@ -51,7 +63,7 @@
     #   community.kubernetes.k8s:
     #     state: present
     #     definition: "{{ lookup('file', './files/tiller/clusterrolebinding.yml') | from_yaml }}"
-
+    
     - name: Add rook repository
       community.kubernetes.helm_repository:
         name: release
@@ -64,17 +76,17 @@
         create_namespace: yes
     - name: Deploy rook-ceph storage class
       community.kubernetes.k8s:
-        state: present
+        state: "{{rook_state}}"
         definition: "{{ lookup('file', './files/ceph/storageclass.yml') | from_yaml }}"
     - name: Deploy rook-ceph replica pool
       community.kubernetes.k8s:
-        state: present
+        state: "{{rook_state}}"
         definition: "{{ lookup('file', './files/ceph/replicapool.yml') | from_yaml }}"
     - name: Deploy rook-ceph storage cluster
       community.kubernetes.k8s:
-        state: present
+        state: "{{rook_state}}"
         definition: "{{ lookup('file', './files/ceph/deployment.yml') | from_yaml }}"
     - name: Deploy rook-ceph toolbox
       community.kubernetes.k8s:
-        state: present
+        state: "{{rook_state}}"
         definition: "{{ lookup('file', './files/ceph/toolbox.yml') | from_yaml }}"

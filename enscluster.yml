@@ -21,6 +21,7 @@
         - chart: "{{ item }}"
         - create_namespace: Yes
         - state: present
+        - purge: no
       # deploy-local-helm-chart:
       #   name: "{{item.name}}"
       #   directory: "{{item.directory}}"
